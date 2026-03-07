@@ -88,7 +88,7 @@ export function SettingsPage({ onDataCleared }: SettingsPageProps) {
     };
 
     return (
-        <div className="p-8 space-y-6 max-w-3xl mx-auto w-full">
+        <div className="p-4 md:p-8 space-y-6 max-w-3xl mx-auto w-full">
             <div>
                 <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
                     <Settings className="w-6 h-6 text-slate-400" />

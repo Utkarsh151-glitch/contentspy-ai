@@ -68,7 +68,7 @@ export function BenchmarkingPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     return (
-        <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
+        <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
             <div>
                 <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
                     <ArrowLeftRight className="w-6 h-6 text-[var(--brand)]" />
@@ -100,37 +100,39 @@ export function BenchmarkingPage() {
 
             {!loading && items.length > 0 && (
                 <>
-                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-                        <div className="grid grid-cols-[1.5fr,1fr,1fr,1fr,auto] gap-4 px-6 py-3 bg-slate-800 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            <span>Competitor</span>
-                            <span>SEO Score</span>
-                            <span>Content Quality</span>
-                            <span>Overall Score</span>
-                            <span>Trend</span>
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-x-auto mb-6">
+                        <div className="min-w-[700px]">
+                            <div className="grid grid-cols-[1.5fr,1fr,1fr,1fr,auto] gap-4 px-6 py-3 bg-slate-800 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                <span>Competitor</span>
+                                <span>SEO Score</span>
+                                <span>Content Quality</span>
+                                <span>Overall Score</span>
+                                <span>Trend</span>
+                            </div>
+                            {items.map((item, i) => (
+                                <motion.div
+                                    key={item.domain + i}
+                                    initial={{ opacity: 0, x: -15 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.08 * i }}
+                                    className="grid grid-cols-[1.5fr,1fr,1fr,1fr,auto] gap-4 px-6 py-4 border-b border-slate-700/50 hover:bg-slate-800/30 transition-all items-center"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+                                            <Globe className="w-4 h-4 text-[var(--brand)]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white text-sm truncate max-w-[180px]">{item.name}</p>
+                                            <p className="text-xs text-slate-500">{item.domain}</p>
+                                        </div>
+                                    </div>
+                                    <ScoreBar value={item.seo} color="bg-[var(--brand)]" />
+                                    <ScoreBar value={item.content} color="bg-emerald-400" />
+                                    <ScoreBar value={item.overall} color="bg-amber-400" />
+                                    <TrendIcon score={item.overall} />
+                                </motion.div>
+                            ))}
                         </div>
-                        {items.map((item, i) => (
-                            <motion.div
-                                key={item.domain + i}
-                                initial={{ opacity: 0, x: -15 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.08 * i }}
-                                className="grid grid-cols-[1.5fr,1fr,1fr,1fr,auto] gap-4 px-6 py-4 border-b border-slate-700/50 hover:bg-slate-800/30 transition-all items-center"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
-                                        <Globe className="w-4 h-4 text-[var(--brand)]" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-white text-sm truncate max-w-[180px]">{item.name}</p>
-                                        <p className="text-xs text-slate-500">{item.domain}</p>
-                                    </div>
-                                </div>
-                                <ScoreBar value={item.seo} color="bg-[var(--brand)]" />
-                                <ScoreBar value={item.content} color="bg-emerald-400" />
-                                <ScoreBar value={item.overall} color="bg-amber-400" />
-                                <TrendIcon score={item.overall} />
-                            </motion.div>
-                        ))}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

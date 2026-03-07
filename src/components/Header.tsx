@@ -7,9 +7,10 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 interface HeaderProps {
     title?: string;
+    onMenuClick?: () => void;
 }
 
-export function Header({ title = "Overview" }: HeaderProps) {
+export function Header({ title = "Overview", onMenuClick }: HeaderProps) {
     const { isAuthenticated, user, signIn } = useAuth();
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -38,14 +39,20 @@ export function Header({ title = "Overview" }: HeaderProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="h-16 bg-white dark:bg-[#101922] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-30"
+            className="h-16 bg-white dark:bg-[#101922] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30"
         >
             <div className="flex items-center gap-2">
+                <button
+                    onClick={onMenuClick}
+                    className="md:hidden p-2 -ml-2 mr-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                     {title}
                 </h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
                 {/* Search */}
                 <div className="relative">
                     <div className="relative group">
@@ -54,8 +61,8 @@ export function Header({ title = "Overview" }: HeaderProps) {
                             ref={searchRef}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-10 pr-8 py-2 text-sm w-56 focus:ring-2 focus:ring-[var(--brand)]/20 focus:outline-none transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
-                            placeholder="Search reports..."
+                            className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-9 pr-8 py-2 text-sm w-36 md:w-56 focus:ring-2 focus:ring-[var(--brand)]/20 focus:outline-none transition-all text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+                            placeholder="Search..."
                             type="text"
                         />
                         {searchQuery && (

@@ -23,8 +23,7 @@ export function HeroSection({ onAnalyze, isAnalyzing }: HeroSectionProps) {
         <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="relative overflow-hidden rounded-2xl bg-slate-900 p-12 flex flex-col items-center text-center"
+            className="relative overflow-hidden rounded-2xl bg-slate-900 p-6 md:p-12 flex flex-col items-center text-center"
         >
             {/* Dot pattern background */}
             <div
@@ -38,24 +37,24 @@ export function HeroSection({ onAnalyze, isAnalyzing }: HeroSectionProps) {
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-[var(--brand)]/10 via-transparent to-transparent pointer-events-none" />
 
-            <div className="relative z-10 max-w-2xl w-full">
-                <h1 className="text-4xl font-extrabold text-white tracking-tight mb-4 leading-tight">
+            <div className="relative z-10 max-w-3xl w-full">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4 leading-tight">
                     Analyze Your Competitors{" "}
-                    <br />
+                    <br className="hidden md:block" />
                     <span className="text-[var(--brand)]">With Intelligence</span>
                 </h1>
-                <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                <p className="text-slate-400 text-sm md:text-lg mb-8 leading-relaxed max-w-2xl mx-auto">
                     Enter a competitor&apos;s URL to generate a deep-dive AI analysis on
                     their SEO, content strategies, and growth opportunities in seconds.
                 </p>
 
                 {/* URL Input */}
-                <div className="flex w-full bg-white dark:bg-slate-800 p-1.5 rounded-xl shadow-2xl focus-within:ring-4 focus-within:ring-[var(--brand)]/20 transition-all">
-                    <div className="flex items-center px-4 text-slate-400">
+                <div className="flex flex-col md:flex-row w-full bg-white dark:bg-slate-800 p-2 md:p-1.5 rounded-2xl md:rounded-xl shadow-2xl focus-within:ring-4 focus-within:ring-[var(--brand)]/20 transition-all gap-2 md:gap-0">
+                    <div className="hidden md:flex items-center px-4 text-slate-400">
                         <Globe className="w-5 h-5" />
                     </div>
                     <input
-                        className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-slate-800 dark:text-white py-3 text-sm"
+                        className="flex-1 bg-slate-50 dark:bg-slate-900 md:bg-transparent md:dark:bg-transparent border border-slate-200 dark:border-slate-700 md:border-none focus:ring-0 focus:outline-none text-slate-800 dark:text-white px-4 md:px-0 py-3 md:py-3 text-sm rounded-xl md:rounded-none"
                         placeholder="https://competitor-domain.com"
                         type="url"
                         value={url}
@@ -66,7 +65,7 @@ export function HeroSection({ onAnalyze, isAnalyzing }: HeroSectionProps) {
                     <button
                         onClick={handleSubmit}
                         disabled={isAnalyzing || !url.trim()}
-                        className="bg-[var(--brand)] hover:bg-[var(--brand)]/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-8 rounded-lg transition-all flex items-center gap-2 active:scale-95 duration-200"
+                        className="w-full md:w-auto bg-[var(--brand)] hover:bg-[var(--brand)]/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 md:py-0 rounded-xl md:rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] duration-200"
                     >
                         <Zap className="w-5 h-5" />
                         {isAnalyzing ? "Analyzing..." : "Analyze"}

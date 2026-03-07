@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard,
     FileText,
@@ -16,6 +16,8 @@ export type PageId = "dashboard" | "reports" | "benchmarking" | "insights" | "se
 interface SidebarProps {
     activePage: PageId;
     onNavigate: (page: PageId) => void;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
 const navItems: { id: PageId; label: string; icon: typeof LayoutDashboard; section?: string }[] = [
@@ -26,15 +28,11 @@ const navItems: { id: PageId; label: string; icon: typeof LayoutDashboard; secti
     { id: "settings", label: "Settings", icon: Settings, section: "ACCOUNT" },
 ];
 
-export function Sidebar({ activePage, onNavigate }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, isOpen, onClose }: SidebarProps) {
     const { isAuthenticated, user, signIn } = useAuth();
-    return (
-        <motion.aside
-            initial={{ x: -280 }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="w-[260px] h-screen bg-[#0d1520] border-r border-slate-800 flex flex-col shrink-0"
-        >
+
+    const sidebarContent = (
+        <>
             {/* Logo */}
             <div className="p-6 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-dark)] flex items-center justify-center shadow-lg shadow-[var(--brand)]/20">
@@ -99,6 +97,48 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
                     </div>
                 )}
             </div>
-        </motion.aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Mobile Overlay */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Mobile Sidebar */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.aside
+                        initial={{ x: "-100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "-100%" }}
+                        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                        className="fixed inset-y-0 left-0 w-[260px] bg-[#0d1520] border-r border-slate-800 flex flex-col z-50 md:hidden shadow-2xl"
+                    >
+                        {sidebarContent}
+                    </motion.aside>
+                )}
+            </AnimatePresence>
+
+            {/* Desktop Sidebar */}
+            <motion.aside
+                initial={{ x: -280 }}
+                animate={{ x: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="hidden md:flex w-[260px] h-screen bg-[#0d1520] border-r border-slate-800 flex-col shrink-0"
+            >
+                {sidebarContent}
+            </motion.aside>
+        </>
     );
 }

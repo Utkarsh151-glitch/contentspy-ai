@@ -35,6 +35,7 @@ export default function Home() {
   const [report, setReport] = useState<CompetitorReport | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // to trigger child re-fetches
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleThinkingMessage = useCallback((message: ThinkingMessage) => {
     setThinkingMessages((prev) => [...prev, message]);
@@ -103,14 +104,25 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f6f7f8] dark:bg-[#101922]">
-      <Sidebar activePage={activePage} onNavigate={handleNavigate} />
+      <Sidebar
+        activePage={activePage}
+        onNavigate={(page) => {
+          handleNavigate(page);
+          setSidebarOpen(false); // Close sidebar on mobile when navigating
+        }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <main className="flex-1 flex flex-col overflow-y-auto">
-        <Header title={pageTitles[activePage]} />
+      <main className="flex-1 flex flex-col overflow-y-auto w-full">
+        <Header
+          title={pageTitles[activePage]}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
         {/* Dashboard Page */}
         {activePage === "dashboard" && (
-          <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+          <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
             <HeroSection
               onAnalyze={startAnalysis}
               isAnalyzing={status === "running"}
