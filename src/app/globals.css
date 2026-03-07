@@ -45,6 +45,55 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-brand: var(--brand);
+  --color-brand-light: var(--brand-light);
+  --color-brand-dark: var(--brand-dark);
+  --color-surface-dark: #101922;
+  --color-surface-darker: #0a1018;
+}
+
+/* ═══ Theme System ═══ */
+:root,
+.theme-ocean {
+  --brand: #137fec;
+  --brand-light: #3d9bff;
+  --brand-dark: #0d5fb3;
+  --brand-glow: rgba(19, 127, 236, 0.4);
+}
+
+.theme-emerald {
+  --brand: #10b981;
+  --brand-light: #34d399;
+  --brand-dark: #059669;
+  --brand-glow: rgba(16, 185, 129, 0.4);
+}
+
+.theme-sunset {
+  --brand: #f97316;
+  --brand-light: #fb923c;
+  --brand-dark: #ea580c;
+  --brand-glow: rgba(249, 115, 22, 0.4);
+}
+
+.theme-violet {
+  --brand: #8b5cf6;
+  --brand-light: #a78bfa;
+  --brand-dark: #7c3aed;
+  --brand-glow: rgba(139, 92, 246, 0.4);
+}
+
+.theme-rose {
+  --brand: #f43f5e;
+  --brand-light: #fb7185;
+  --brand-dark: #e11d48;
+  --brand-glow: rgba(244, 63, 94, 0.4);
+}
+
+.theme-amber {
+  --brand: #f59e0b;
+  --brand-light: #fbbf24;
+  --brand-dark: #d97706;
+  --brand-glow: rgba(245, 158, 11, 0.4);
 }
 
 :root {
@@ -54,7 +103,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.58 0.19 255);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -83,14 +132,14 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.145 0.01 250);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.18 0.01 250);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.18 0.01 250);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0.00 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.62 0.19 255);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -106,9 +155,9 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.18 0.01 250);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.62 0.19 255);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -120,10 +169,109 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(19, 127, 236, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(19, 127, 236, 0);
+  }
+}
+
+@keyframes typing {
+  0% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0,
+      rgba(255, 255, 255, 0.2) 20%,
+      rgba(255, 255, 255, 0.5) 60%,
+      rgba(255, 255, 255, 0));
+  animation: shimmer 2s infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0 0 / 30%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 50%);
 }
