@@ -134,12 +134,12 @@ export function ReportView({ report }: ReportViewProps) {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <ScoreRing score={report.overall_score || 0} label="Overall" />
-                            <ScoreRing score={report.seo_score || 0} label="SEO" />
+                        <div className="flex items-center gap-4 flex-wrap w-full md:w-auto mt-4 md:mt-0">
+                            <ScoreRing score={report.overall_score || 0} label="Overall" size={70} />
+                            <ScoreRing score={report.seo_score || 0} label="SEO" size={70} />
                             <button
                                 onClick={() => generateReportPDF(report)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand)] hover:bg-[#0d6fd4] text-white text-sm font-semibold transition-all shadow-lg shadow-[var(--brand)]/20 hover:shadow-[var(--brand)]/40"
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--brand)] hover:bg-[#0d6fd4] text-white text-sm font-semibold transition-all shadow-lg shadow-[var(--brand)]/20 hover:shadow-[var(--brand)]/40 w-full md:w-auto mt-2 md:mt-0"
                             >
                                 <Download className="w-4 h-4" />
                                 Download PDF
@@ -149,22 +149,22 @@ export function ReportView({ report }: ReportViewProps) {
 
                     {/* Quick stats bar */}
                     {report.market_size && (
-                        <div className="flex items-center gap-6 mt-6 pt-6 border-t border-white/10 flex-wrap">
+                        <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-6 mt-6 pt-6 border-t border-white/10">
                             <div className="flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-emerald-400" />
-                                <span className="text-sm text-slate-300">Market Size: <strong className="text-white">{report.market_size}</strong></span>
+                                <BarChart3 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <span className="text-xs md:text-sm text-slate-300">Market Size: <strong className="text-white block md:inline mt-0.5 md:mt-0">{report.market_size}</strong></span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 text-blue-400" />
-                                <span className="text-sm text-slate-300">Trend: <strong className="text-white capitalize">{report.market_trend}</strong></span>
+                                <TrendingUp className="w-4 h-4 text-blue-400 shrink-0" />
+                                <span className="text-xs md:text-sm text-slate-300">Trend: <strong className="text-white capitalize block md:inline mt-0.5 md:mt-0">{report.market_trend}</strong></span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Target className="w-4 h-4 text-amber-400" />
-                                <span className="text-sm text-slate-300">Keywords: <strong className="text-white">{report.top_keywords?.length || 0}</strong></span>
+                                <Target className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span className="text-xs md:text-sm text-slate-300">Keywords: <strong className="text-white block md:inline mt-0.5 md:mt-0">{report.top_keywords?.length || 0}</strong></span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-red-400" />
-                                <span className="text-sm text-slate-300">Weaknesses: <strong className="text-white">{report.competitor_weaknesses?.length || 0}</strong></span>
+                                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                                <span className="text-xs md:text-sm text-slate-300">Weaknesses: <strong className="text-white block md:inline mt-0.5 md:mt-0">{report.competitor_weaknesses?.length || 0}</strong></span>
                             </div>
                         </div>
                     )}
@@ -173,23 +173,25 @@ export function ReportView({ report }: ReportViewProps) {
 
             {/* ═══════ TABS ═══════ */}
             <Tabs defaultValue="battleplan" className="w-full">
-                <TabsList className="w-full justify-start bg-slate-800/50 border border-slate-700 p-1.5 rounded-xl h-auto flex-wrap gap-1">
-                    <TabsTrigger value="battleplan" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs">
-                        <Crosshair className="w-3.5 h-3.5 mr-1.5" /> Battle Plan
-                    </TabsTrigger>
-                    <TabsTrigger value="intel" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs">
-                        <Shield className="w-3.5 h-3.5 mr-1.5" /> Intel
-                    </TabsTrigger>
-                    <TabsTrigger value="seo" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs">
-                        <Search className="w-3.5 h-3.5 mr-1.5" /> SEO & Keywords
-                    </TabsTrigger>
-                    <TabsTrigger value="content" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs">
-                        <FileText className="w-3.5 h-3.5 mr-1.5" /> Content
-                    </TabsTrigger>
-                    <TabsTrigger value="opportunities" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs">
-                        <Rocket className="w-3.5 h-3.5 mr-1.5" /> Opportunities
-                    </TabsTrigger>
-                </TabsList>
+                <div className="w-full overflow-x-auto pb-2 -mb-2 no-scrollbar">
+                    <TabsList className="min-w-max justify-start bg-slate-800/50 border border-slate-700 p-1.5 rounded-xl h-auto gap-1">
+                        <TabsTrigger value="battleplan" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs whitespace-nowrap">
+                            <Crosshair className="w-3.5 h-3.5 mr-1.5" /> Battle Plan
+                        </TabsTrigger>
+                        <TabsTrigger value="intel" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs whitespace-nowrap">
+                            <Shield className="w-3.5 h-3.5 mr-1.5" /> Intel
+                        </TabsTrigger>
+                        <TabsTrigger value="seo" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs whitespace-nowrap">
+                            <Search className="w-3.5 h-3.5 mr-1.5" /> SEO & Keywords
+                        </TabsTrigger>
+                        <TabsTrigger value="content" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs whitespace-nowrap">
+                            <FileText className="w-3.5 h-3.5 mr-1.5" /> Content
+                        </TabsTrigger>
+                        <TabsTrigger value="opportunities" className="data-[state=active]:bg-[var(--brand)] data-[state=active]:text-white rounded-lg text-xs whitespace-nowrap">
+                            <Rocket className="w-3.5 h-3.5 mr-1.5" /> Opportunities
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
 
                 {/* ═══════ BATTLE PLAN TAB ═══════ */}
                 <TabsContent value="battleplan">
@@ -514,14 +516,14 @@ export function ReportView({ report }: ReportViewProps) {
                                                 }`} />
                                             <div className="flex-1 p-5">
                                                 <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                                                    <h4 className="font-bold text-white flex items-center gap-2">
-                                                        <Rocket className="w-4 h-4 text-green-400" />
-                                                        {opportunity}
+                                                    <h4 className="font-bold text-white flex items-center gap-2 w-full sm:w-auto">
+                                                        <Rocket className="w-4 h-4 text-green-400 shrink-0" />
+                                                        <span className="truncate">{opportunity}</span>
                                                     </h4>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="text-[10px] text-slate-500 uppercase tracking-wider">Difficulty</span>
                                                         <ImpactBadge level={difficulty} />
-                                                        <span className="text-[10px] text-slate-500 uppercase tracking-wider ml-2">Impact</span>
+                                                        <span className="text-[10px] text-slate-500 uppercase tracking-wider ml-0 sm:ml-2">Impact</span>
                                                         <ImpactBadge level={impact} />
                                                     </div>
                                                 </div>
