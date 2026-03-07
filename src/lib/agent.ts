@@ -162,8 +162,8 @@ export async function runAgenticAnalysis(
 
     // Puter model names — try multiple models in order
     const modelsToTry = [
-        "claude-opus-4-5",
         "gpt-5.4",
+        "claude-opus-4-5",
         "gpt-4o",
     ];
 
