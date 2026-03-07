@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeftRight, TrendingUp, TrendingDown, Minus, Globe, BarChart3, Loader2, FolderOpen } from "lucide-react";
 import { getReports, SavedReport } from "@/lib/report-store";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface BenchmarkItem {
     name: string;
@@ -36,15 +37,21 @@ function TrendIcon({ score }: { score: number }) {
 }
 
 export function BenchmarkingPage() {
+    const { user, isAuthenticated } = useAuth();
     const [items, setItems] = useState<BenchmarkItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformer, setTopPerformer] = useState<BenchmarkItem | null>(null);
     const [weakest, setWeakest] = useState<BenchmarkItem | null>(null);
 
     const fetchData = useCallback(async () => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const reports = await getReports();
+            const userId = user?.email || user?.username || "anonymous";
+            const reports = await getReports(userId);
             const benchmarks: BenchmarkItem[] = reports.map((r) => ({
                 name: r.report.competitor,
                 domain: r.url.replace(/^https?:\/\//, "").replace(/\/.*$/, ""),

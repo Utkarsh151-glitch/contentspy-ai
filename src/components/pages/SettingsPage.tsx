@@ -44,14 +44,19 @@ export function SettingsPage({ onDataCleared }: SettingsPageProps) {
     const [activeTheme, setActiveTheme] = useState("theme-ocean");
 
     useEffect(() => {
-        getReports().then((r) => setReportCount(r.length)).catch(() => { });
+        if (!isAuthenticated) {
+            setReportCount(0);
+            return;
+        }
+        const userId = user?.email || user?.username || "anonymous";
+        getReports(userId).then((r) => setReportCount(r.length)).catch(() => { });
         if (typeof window !== "undefined") {
             setEmailNotifs(localStorage.getItem("cs_email_notifs") !== "false");
             setCompetitorAlerts(localStorage.getItem("cs_comp_alerts") === "true");
             const saved = localStorage.getItem("cs_theme") || "theme-ocean";
             setActiveTheme(saved);
         }
-    }, []);
+    }, [user, isAuthenticated]);
 
     const applyTheme = (themeId: string) => {
         setActiveTheme(themeId);
@@ -78,7 +83,8 @@ export function SettingsPage({ onDataCleared }: SettingsPageProps) {
         if (!confirmClear) { setConfirmClear(true); return; }
         setClearing(true);
         try {
-            await deleteAllReports();
+            const userId = user?.email || user?.username || "anonymous";
+            await deleteAllReports(userId);
             setReportCount(0);
             setConfirmClear(false);
             onDataCleared?.();

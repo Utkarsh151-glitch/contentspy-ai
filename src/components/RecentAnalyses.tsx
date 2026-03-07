@@ -4,26 +4,33 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Globe, ExternalLink, ArrowRight, Loader2, Compass } from "lucide-react";
 import { getReports, SavedReport } from "@/lib/report-store";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface RecentAnalysesProps {
     onViewReport: (saved: SavedReport) => void;
 }
 
 export function RecentAnalyses({ onViewReport }: RecentAnalysesProps) {
+    const { user, isAuthenticated } = useAuth();
     const [recent, setRecent] = useState<SavedReport[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchRecent = useCallback(async () => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const all = await getReports();
+            const userId = user?.email || user?.username || "anonymous";
+            const all = await getReports(userId);
             setRecent(all.slice(0, 2)); // show latest 2
         } catch {
             setRecent([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user, isAuthenticated]);
 
     useEffect(() => { fetchRecent(); }, [fetchRecent]);
 

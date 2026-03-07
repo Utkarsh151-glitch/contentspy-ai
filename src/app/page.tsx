@@ -28,7 +28,7 @@ const pageTitles: Record<PageId, string> = {
 };
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [activePage, setActivePage] = useState<PageId>("dashboard");
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const [thinkingMessages, setThinkingMessages] = useState<ThinkingMessage[]>([]);
@@ -62,7 +62,8 @@ export default function Home() {
           setStatus("complete");
           // Save to Puter KV
           try {
-            await saveReport(result, url);
+            const userId = user?.email || user?.username || "anonymous";
+            await saveReport(result, url, userId);
             setRefreshKey((k) => k + 1); // trigger child re-fetches
           } catch (saveErr) {
             console.warn("Failed to save report to Puter KV:", saveErr);

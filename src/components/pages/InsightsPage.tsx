@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Target, TrendingUp, AlertTriangle, Zap, BarChart3, Loader2, FolderOpen } from "lucide-react";
 import { getReports } from "@/lib/report-store";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface InsightItem {
     title: string;
@@ -17,14 +18,20 @@ interface InsightItem {
 }
 
 export function InsightsPage() {
+    const { user, isAuthenticated } = useAuth();
     const [insights, setInsights] = useState<InsightItem[]>([]);
     const [stats, setStats] = useState({ reports: 0, opportunities: 0, gaps: 0, avgScore: 0 });
     const [loading, setLoading] = useState(true);
 
     const fetchInsights = useCallback(async () => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const reports = await getReports();
+            const userId = user?.email || user?.username || "anonymous";
+            const reports = await getReports(userId);
             if (reports.length === 0) { setInsights([]); setLoading(false); return; }
 
             const allGaps = reports.flatMap((r) => r.report.content_gaps || []);

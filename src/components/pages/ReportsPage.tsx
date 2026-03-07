@@ -5,34 +5,42 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Download, Calendar, Globe, Eye, Trash2, TrendingUp, Loader2, FolderOpen } from "lucide-react";
 import { getReports, deleteReport, SavedReport } from "@/lib/report-store";
 import { generateReportPDF } from "@/lib/pdf-generator";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface ReportsPageProps {
     onViewReport: (saved: SavedReport) => void;
 }
 
 export function ReportsPage({ onViewReport }: ReportsPageProps) {
+    const { user, isAuthenticated } = useAuth();
     const [reports, setReports] = useState<SavedReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState<string | null>(null);
 
     const fetchReports = useCallback(async () => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const data = await getReports();
+            const userId = user?.email || user?.username || "anonymous";
+            const data = await getReports(userId);
             setReports(data);
         } catch {
             setReports([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user, isAuthenticated]);
 
     useEffect(() => { fetchReports(); }, [fetchReports]);
 
     const handleDelete = async (id: string) => {
         setDeleting(id);
         try {
-            await deleteReport(id);
+            const userId = user?.email || user?.username || "anonymous";
+            await deleteReport(id, userId);
             setReports((prev) => prev.filter((r) => r.id !== id));
         } finally {
             setDeleting(null);

@@ -4,21 +4,25 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, BarChart3, Target, Zap } from "lucide-react";
 import { getReports } from "@/lib/report-store";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export function MarketDynamics() {
+    const { user, isAuthenticated } = useAuth();
     const [reportCount, setReportCount] = useState(0);
     const [topScore, setTopScore] = useState(0);
     const [niches, setNiches] = useState(0);
 
     useEffect(() => {
-        getReports().then((reports) => {
+        if (!isAuthenticated) return;
+        const userId = user?.email || user?.username || "anonymous";
+        getReports(userId).then((reports) => {
             setReportCount(reports.length);
             if (reports.length > 0) {
                 setTopScore(Math.max(...reports.map((r) => r.report.overall_score || 0)));
                 setNiches(new Set(reports.map((r) => r.report.niche)).size);
             }
         }).catch(() => { });
-    }, []);
+    }, [user, isAuthenticated]);
 
     return (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">

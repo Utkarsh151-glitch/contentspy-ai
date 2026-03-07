@@ -8,11 +8,15 @@ export interface SavedReport {
     url: string;
 }
 
-const KV_KEY = "contentspy_reports";
+const KV_KEY_PREFIX = "contentspy_reports_";
 
 // ─── Helpers ──────────────────────────────────────────
 function generateId(): string {
     return `rpt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getUserKey(userId: string): string {
+    return `${KV_KEY_PREFIX}${userId}`;
 }
 
 async function getPuter(): Promise<typeof window.puter> {
@@ -30,23 +34,23 @@ async function getPuter(): Promise<typeof window.puter> {
 /**
  * Save a report to Puter KV. Returns the generated ID.
  */
-export async function saveReport(report: CompetitorReport, url: string): Promise<string> {
+export async function saveReport(report: CompetitorReport, url: string, userId: string): Promise<string> {
     const puter = await getPuter();
-    const all = await getReports();
+    const all = await getReports(userId);
     const id = generateId();
     const entry: SavedReport = { id, report, url, createdAt: Date.now() };
     all.push(entry);
-    await puter.kv.set(KV_KEY, JSON.stringify(all));
+    await puter.kv.set(getUserKey(userId), JSON.stringify(all));
     return id;
 }
 
 /**
  * Get all saved reports for the current user, newest first.
  */
-export async function getReports(): Promise<SavedReport[]> {
+export async function getReports(userId: string): Promise<SavedReport[]> {
     try {
         const puter = await getPuter();
-        const raw = await puter.kv.get(KV_KEY);
+        const raw = await puter.kv.get(getUserKey(userId));
         if (!raw) return [];
         const parsed = JSON.parse(raw as string) as SavedReport[];
         return parsed.sort((a, b) => b.createdAt - a.createdAt);
@@ -58,25 +62,25 @@ export async function getReports(): Promise<SavedReport[]> {
 /**
  * Get a single report by ID.
  */
-export async function getReportById(id: string): Promise<SavedReport | null> {
-    const all = await getReports();
+export async function getReportById(id: string, userId: string): Promise<SavedReport | null> {
+    const all = await getReports(userId);
     return all.find((r) => r.id === id) || null;
 }
 
 /**
  * Delete a report by ID.
  */
-export async function deleteReport(id: string): Promise<void> {
+export async function deleteReport(id: string, userId: string): Promise<void> {
     const puter = await getPuter();
-    const all = await getReports();
+    const all = await getReports(userId);
     const filtered = all.filter((r) => r.id !== id);
-    await puter.kv.set(KV_KEY, JSON.stringify(filtered));
+    await puter.kv.set(getUserKey(userId), JSON.stringify(filtered));
 }
 
 /**
  * Delete ALL reports (danger zone).
  */
-export async function deleteAllReports(): Promise<void> {
+export async function deleteAllReports(userId: string): Promise<void> {
     const puter = await getPuter();
-    await puter.kv.del(KV_KEY);
+    await puter.kv.del(getUserKey(userId));
 }
