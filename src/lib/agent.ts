@@ -23,6 +23,209 @@ function getErrorMessage(err: unknown): string {
     }
 }
 
+/**
+ * Robust JSON repair function that handles common LLM output issues:
+ * - Trailing commas before } or ]
+ * - Control characters (newlines, tabs) inside string values
+ * - Single quotes instead of double quotes
+ * - Unescaped backslashes
+ * - Comments (// and /* *​/)
+ */
+function repairJSON(input: string): string {
+    let s = input;
+
+    // Remove BOM if present
+    s = s.replace(/^\uFEFF/, '');
+
+    // Remove single-line comments (// ...) that are NOT inside strings
+    // This is a heuristic approach — process line by line
+    const lines = s.split('\n');
+    const cleanedLines: string[] = [];
+    for (const line of lines) {
+        // Check if this line has a // outside of a string
+        let inString = false;
+        let escaped = false;
+        let commentStart = -1;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (escaped) { escaped = false; continue; }
+            if (ch === '\\') { escaped = true; continue; }
+            if (ch === '"') { inString = !inString; continue; }
+            if (!inString && ch === '/' && i + 1 < line.length && line[i + 1] === '/') {
+                commentStart = i;
+                break;
+            }
+        }
+        cleanedLines.push(commentStart >= 0 ? line.substring(0, commentStart) : line);
+    }
+    s = cleanedLines.join('\n');
+
+    // Remove block comments /* ... */
+    s = s.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // Remove trailing commas before } or ]
+    s = s.replace(/,\s*([}\]])/g, '$1');
+
+    // Fix control characters inside JSON strings (newlines, tabs, etc.)
+    // Walk through the string character by character to find string boundaries
+    let result = '';
+    let inStr = false;
+    let esc = false;
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+
+        if (esc) {
+            result += ch;
+            esc = false;
+            continue;
+        }
+
+        if (ch === '\\') {
+            esc = true;
+            result += ch;
+            continue;
+        }
+
+        if (ch === '"') {
+            inStr = !inStr;
+            result += ch;
+            continue;
+        }
+
+        if (inStr) {
+            // Replace actual control characters with their escaped versions
+            if (ch === '\n') { result += '\\n'; continue; }
+            if (ch === '\r') { result += '\\r'; continue; }
+            if (ch === '\t') { result += '\\t'; continue; }
+            // Replace other control chars
+            const code = ch.charCodeAt(0);
+            if (code < 32 && code !== 10 && code !== 13 && code !== 9) {
+                result += '\\u' + code.toString(16).padStart(4, '0');
+                continue;
+            }
+        }
+
+        result += ch;
+    }
+    s = result;
+
+    // Another pass to remove trailing commas (in case control char removal exposed new ones)
+    s = s.replace(/,\s*([}\]])/g, '$1');
+
+    return s;
+}
+
+/**
+ * Close truncated JSON by auto-closing all open brackets, braces, and strings.
+ * This handles cases where the AI model hits its token limit mid-response.
+ */
+function closeTruncatedJSON(input: string): string {
+    let s = input.trimEnd();
+
+    // If it already ends with }, it might be complete
+    if (s.endsWith('}')) return s;
+
+    // Track what's open
+    let inString = false;
+    let escaped = false;
+    const stack: string[] = []; // stack of open delimiters
+
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) { escaped = false; continue; }
+        if (ch === '\\') { escaped = true; continue; }
+
+        if (inString) {
+            if (ch === '"') inString = false;
+            continue;
+        }
+
+        if (ch === '"') {
+            inString = true;
+            continue;
+        }
+        if (ch === '{') stack.push('}');
+        if (ch === '[') stack.push(']');
+        if (ch === '}' || ch === ']') {
+            if (stack.length > 0 && stack[stack.length - 1] === ch) {
+                stack.pop();
+            }
+        }
+    }
+
+    // If we're still inside a string, close it
+    if (inString) {
+        s += '"';
+    }
+
+    // Remove any trailing comma or colon that would be invalid
+    s = s.replace(/[,:"\s]+$/, (match) => {
+        // Keep the closing quote if we just added it
+        if (match === '"') return match;
+        return '';
+    });
+    s = s.trimEnd();
+
+    // If ends mid-value (after a colon), add a placeholder
+    if (s.endsWith(':')) {
+        s += '""';
+    }
+    if (s.endsWith(',')) {
+        s = s.slice(0, -1);
+    }
+
+    // Close all open brackets/braces in reverse order
+    while (stack.length > 0) {
+        const closer = stack.pop()!;
+        // Remove trailing comma before closing
+        s = s.replace(/,\s*$/, '');
+        s += closer;
+    }
+
+    return s;
+}
+
+/**
+ * Extract a JSON object string from raw LLM output
+ */
+function extractJSON(raw: string): string {
+    // 1. Try markdown code blocks first
+    const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch) {
+        return codeBlockMatch[1].trim();
+    }
+
+    // 2. Find balanced braces — start from the first { and find matching }
+    const firstBrace = raw.indexOf('{');
+    if (firstBrace === -1) throw new Error("No JSON object found in response");
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = firstBrace; i < raw.length; i++) {
+        const ch = raw[i];
+        if (escaped) { escaped = false; continue; }
+        if (ch === '\\') { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === '{') depth++;
+        if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+                return raw.substring(firstBrace, i + 1);
+            }
+        }
+    }
+
+    // If we couldn't find balanced braces, fall back to first { to last }
+    const lastBrace = raw.lastIndexOf('}');
+    if (lastBrace > firstBrace) {
+        return raw.substring(firstBrace, lastBrace + 1);
+    }
+
+    throw new Error("No valid JSON object boundaries found");
+}
+
 function buildPrompt(url: string, niche?: string): string {
     const nicheInstruction = niche
         ? `The competitor operates in the "${niche}" niche/industry.`
@@ -88,7 +291,14 @@ After researching, provide ACTIONABLE intelligence:
 
 ## OUTPUT FORMAT
 
-Return ONLY a JSON object with this EXACT structure. No markdown, no code blocks, just raw JSON:
+You MUST return ONLY a valid JSON object. The JSON must:
+- Use double quotes for ALL keys and string values
+- NOT contain any trailing commas
+- NOT contain any comments
+- NOT contain literal newlines inside string values (use \\n instead)
+- Have NO text before the opening { or after the closing }
+
+Here is the EXACT structure:
 
 {
   "competitor": "${url}",
@@ -96,29 +306,24 @@ Return ONLY a JSON object with this EXACT structure. No markdown, no code blocks
   "company_summary": "<2-3 sentence summary of what they do and who they serve>",
   "overall_score": <number 0-100>,
   "success_factors": [
-    {"factor": "<what they do well>", "impact": "high|medium|low", "detail": "<why this matters and how it works>"},
-    ...at least 5 factors
+    {"factor": "<what they do well>", "impact": "high|medium|low", "detail": "<why this matters and how it works>"}
   ],
   "top_keywords": [
-    {"keyword": "<keyword>", "difficulty": "easy|medium|hard", "opportunity": true|false},
-    ...at least 8 keywords
+    {"keyword": "<keyword>", "difficulty": "easy|medium|hard", "opportunity": true|false}
   ],
   "seo_strategy": "<detailed 3-4 sentence analysis of their SEO approach>",
   "seo_score": <number 0-100>,
   "top_content": [
-    {"title": "<content title>", "url": "<url if found>", "description": "<why it performs well>", "type": "<blog|landing_page|tool|video|guide|case_study>"},
-    ...at least 5 pieces
+    {"title": "<content title>", "url": "<url if found>", "description": "<why it performs well>", "type": "<blog|landing_page|tool|video|guide|case_study>"}
   ],
   "content_strategy": "<their overall content strategy in 2-3 sentences>",
-  "market_size": "<estimated market size, e.g. '$5.2B in 2024'>",
+  "market_size": "<estimated market size>",
   "market_trend": "growing|stable|declining",
   "competitor_weaknesses": [
-    {"weakness": "<what they're bad at>", "how_to_exploit": "<specific action your client should take>"},
-    ...at least 4 weaknesses
+    {"weakness": "<what they are bad at>", "how_to_exploit": "<specific action your client should take>"}
   ],
   "content_gaps": [
-    {"gap": "<topic they don't cover>", "priority": "high|medium|low", "action": "<exactly what content to create>"},
-    ...at least 5 gaps
+    {"gap": "<topic they do not cover>", "priority": "high|medium|low", "action": "<exactly what content to create>"}
   ],
   "opportunities": [
     {
@@ -126,22 +331,66 @@ Return ONLY a JSON object with this EXACT structure. No markdown, no code blocks
       "difficulty": "easy|medium|hard",
       "potential_impact": "high|medium|low",
       "action_steps": ["<step 1>", "<step 2>", "<step 3>"]
-    },
-    ...at least 4 opportunities
+    }
   ],
   "market_entry_plan": [
-    {"step": "<step title>", "description": "<what to do>", "timeline": "<when, e.g. Week 1-2>"},
-    ...at least 5 steps
+    {"step": "<step title>", "description": "<what to do>", "timeline": "<when>"}
   ],
-  "unique_angles": ["<differentiation angle 1>", "<angle 2>", ...at least 4],
-  "positioning_suggestion": "<a specific positioning statement like 'The [X] for [audience] who want [benefit] without [pain point]'>"
+  "unique_angles": ["<differentiation angle 1>", "<angle 2>"],
+  "positioning_suggestion": "<a specific positioning statement>"
 }
+
+Provide at least 5 success_factors, 8 top_keywords, 5 top_content, 4 competitor_weaknesses, 5 content_gaps, 4 opportunities, 5 market_entry_plan steps, and 4 unique_angles.
 
 CRITICAL RULES:
 - Use REAL data from your web searches. Do NOT hallucinate.
-- Be SPECIFIC — no generic advice. Reference actual findings.
+- Be SPECIFIC and reference actual findings.
 - Every recommendation must be ACTIONABLE.
-- Return ONLY the JSON. No text before or after.`;
+- Return ONLY valid JSON. No markdown, no code blocks, no text before or after.
+- Do NOT use apostrophes or single quotes inside string values. Use the word or rephrase instead.
+- Keep each string value concise (1-3 sentences max per field). Avoid long paragraphs.`;
+}
+
+/**
+ * Extract text content from a Puter AI response (handles all known formats)
+ */
+function extractTextFromResponse(response: unknown): string {
+    if (typeof response === "string") return response;
+
+    if (response && typeof response === "object") {
+        const r = response as Record<string, unknown>;
+
+        // Format: { message: { content: "..." } }
+        if (r.message && typeof r.message === "object") {
+            const msg = r.message as Record<string, unknown>;
+            if (typeof msg.content === "string") return msg.content;
+            if (Array.isArray(msg.content)) {
+                return msg.content
+                    .filter((c: unknown): c is { text: string } =>
+                        typeof c === "object" && c !== null && "text" in c
+                    )
+                    .map((c) => c.text)
+                    .join("");
+            }
+        }
+
+        // Format: { text: "..." }
+        if (typeof r.text === "string") return r.text;
+
+        // Format: { content: "..." }
+        if (typeof r.content === "string") return r.content;
+
+        // Format: { choices: [{ message: { content: "..." } }] }
+        if (Array.isArray(r.choices) && r.choices.length > 0) {
+            const choice = r.choices[0] as Record<string, unknown>;
+            if (choice.message && typeof choice.message === "object") {
+                const msg = choice.message as Record<string, unknown>;
+                if (typeof msg.content === "string") return msg.content;
+            }
+        }
+    }
+
+    return "";
 }
 
 export async function runAgenticAnalysis(
@@ -168,12 +417,7 @@ export async function runAgenticAnalysis(
     ];
 
     onThinking(createThinkingMessage("🚀 Initializing deep market analysis...", "info"));
-    onThinking(
-        createThinkingMessage(
-            `🎯 Target competitor: ${url}`,
-            "info"
-        )
-    );
+    onThinking(createThinkingMessage(`🎯 Target competitor: ${url}`, "info"));
 
     let response: unknown;
     let usedModel = "";
@@ -181,42 +425,24 @@ export async function runAgenticAnalysis(
     for (let i = 0; i < modelsToTry.length; i++) {
         const model = modelsToTry[i];
         try {
-            onThinking(
-                createThinkingMessage(
-                    `🔌 Connecting to ${model}...`,
-                    "info"
-                )
-            );
+            onThinking(createThinkingMessage(`🔌 Connecting to ${model}...`, "info"));
+
+            // Use NON-STREAMING mode to avoid chunk corruption issues
             response = await window.puter.ai.chat(prompt, {
                 model,
                 tools: [{ type: "web_search" }],
                 tool_choice: "auto",
-                stream: true,
+                stream: false,
             });
             usedModel = model;
-            onThinking(
-                createThinkingMessage(
-                    `✅ Connected to ${model}`,
-                    "info"
-                )
-            );
+            onThinking(createThinkingMessage(`✅ Connected to ${model}`, "info"));
             break;
         } catch (err) {
             const errMsg = getErrorMessage(err);
             if (i < modelsToTry.length - 1) {
-                onThinking(
-                    createThinkingMessage(
-                        `⚠️ ${model} unavailable. Trying next...`,
-                        "info"
-                    )
-                );
+                onThinking(createThinkingMessage(`⚠️ ${model} unavailable. Trying next...`, "info"));
             } else {
-                onThinking(
-                    createThinkingMessage(
-                        `❌ All models failed. Last error: ${errMsg}`,
-                        "error"
-                    )
-                );
+                onThinking(createThinkingMessage(`❌ All models failed. Last error: ${errMsg}`, "error"));
                 throw new Error(`All AI models failed. Last error: ${errMsg}`);
             }
         }
@@ -226,80 +452,88 @@ export async function runAgenticAnalysis(
         throw new Error("No AI model responded");
     }
 
-    // Handle streaming response
-    let fullText = "";
+    // Show progress messages since we no longer have streaming
     const thinkingMessages = [
-        { trigger: 0, text: "🔍 Scanning competitor website...", type: "search" as const },
-        { trigger: 100, text: "📊 Analyzing market positioning...", type: "analyze" as const },
-        { trigger: 300, text: "🔑 Extracting keyword strategy...", type: "extract" as const },
-        { trigger: 500, text: "📝 Reviewing top content...", type: "extract" as const },
-        { trigger: 800, text: "⚠️ Identifying competitor weaknesses...", type: "analyze" as const },
-        { trigger: 1100, text: "🕳️ Finding content gaps...", type: "extract" as const },
-        { trigger: 1400, text: "🚀 Mapping market entry opportunities...", type: "analyze" as const },
-        { trigger: 1800, text: "📋 Building market entry plan...", type: "generate" as const },
-        { trigger: 2200, text: "💡 Crafting differentiation strategy...", type: "generate" as const },
-        { trigger: 2600, text: "📄 Compiling intelligence report...", type: "generate" as const },
+        "🔍 Scanning competitor website...",
+        "📊 Analyzing market positioning...",
+        "🔑 Extracting keyword strategy...",
+        "📝 Reviewing top content...",
+        "⚠️ Identifying competitor weaknesses...",
+        "🕳️ Finding content gaps...",
+        "🚀 Mapping market entry opportunities...",
+        "📋 Building market entry plan...",
+        "💡 Crafting differentiation strategy...",
+        "📄 Compiling intelligence report...",
     ];
-    let nextMessageIndex = 0;
+    const types: ThinkingMessage["type"][] = [
+        "search", "analyze", "extract", "extract", "analyze",
+        "extract", "analyze", "generate", "generate", "generate",
+    ];
+    for (let i = 0; i < thinkingMessages.length; i++) {
+        onThinking(createThinkingMessage(thinkingMessages[i], types[i]));
+    }
 
-    try {
-        if (response && typeof response === "object" && Symbol.asyncIterator in (response as object)) {
-            for await (const chunk of response as AsyncIterable<{ text?: string }>) {
-                if (chunk?.text) {
-                    fullText += chunk.text;
-                } else if (typeof chunk === "string") {
-                    fullText += chunk;
-                }
+    // Extract text from the response
+    const fullText = extractTextFromResponse(response);
+    console.log("AI response length:", fullText.length);
+    console.log("AI response preview:", fullText.substring(0, 200));
 
-                while (
-                    nextMessageIndex < thinkingMessages.length &&
-                    fullText.length >= thinkingMessages[nextMessageIndex].trigger
-                ) {
-                    const msg = thinkingMessages[nextMessageIndex];
-                    onThinking(createThinkingMessage(msg.text, msg.type));
-                    nextMessageIndex++;
-                }
-            }
-        } else if (response && typeof response === "object") {
-            // Non-streaming response
-            const res = response as { message?: { content?: string | { text?: string }[] } };
-            if (res.message?.content) {
-                if (typeof res.message.content === "string") {
-                    fullText = res.message.content;
-                } else if (Array.isArray(res.message.content)) {
-                    fullText = res.message.content
-                        .filter((c): c is { text: string } => "text" in c)
-                        .map((c) => c.text)
-                        .join("");
-                }
-            }
-        }
-    } catch (streamErr) {
-        onThinking(
-            createThinkingMessage(
-                `Stream error: ${getErrorMessage(streamErr)}`,
-                "error"
-            )
-        );
+    if (!fullText || fullText.trim().length === 0) {
+        onThinking(createThinkingMessage("❌ AI returned empty response", "error"));
+        throw new Error("AI returned an empty response");
     }
 
     onThinking(createThinkingMessage(`🧠 AI used: ${usedModel}. Parsing results...`, "generate"));
 
-    // Extract JSON from the response
+    // Extract and parse JSON with robust error handling
     try {
-        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const report: CompetitorReport = JSON.parse(jsonMatch[0]);
-            onThinking(
-                createThinkingMessage("✅ Deep analysis complete! Report ready.", "complete")
-            );
+        // Step 1: Extract the JSON substring
+        let jsonStr = extractJSON(fullText);
+
+        // Step 2: Repair common JSON issues
+        jsonStr = repairJSON(jsonStr);
+
+        // Step 3: Try parsing, if it fails try closing truncated JSON
+        try {
+            const report: CompetitorReport = JSON.parse(jsonStr);
+            onThinking(createThinkingMessage("✅ Deep analysis complete! Report ready.", "complete"));
+            return report;
+        } catch {
+            // JSON is likely truncated — try auto-closing
+            console.warn("JSON parse failed, attempting to close truncated JSON...");
+            jsonStr = closeTruncatedJSON(jsonStr);
+            jsonStr = repairJSON(jsonStr); // clean up again after closing
+            const report: CompetitorReport = JSON.parse(jsonStr);
+            onThinking(createThinkingMessage("✅ Deep analysis complete! Report ready (partial data recovered).", "complete"));
             return report;
         }
-        throw new Error("No JSON found in response");
-    } catch (parseErr) {
+    } catch (firstErr) {
+        console.warn("First parse attempt failed:", firstErr);
+
+        // Retry: grab all text from first { and try to close it
+        try {
+            const firstBrace = fullText.indexOf('{');
+            if (firstBrace !== -1) {
+                let jsonStr = fullText.substring(firstBrace);
+                jsonStr = repairJSON(jsonStr);
+                jsonStr = closeTruncatedJSON(jsonStr);
+                jsonStr = repairJSON(jsonStr);
+
+                const report: CompetitorReport = JSON.parse(jsonStr);
+                onThinking(createThinkingMessage("✅ Deep analysis complete! Report ready (partial data recovered).", "complete"));
+                return report;
+            }
+        } catch (secondErr) {
+            console.error("Second parse attempt also failed:", secondErr);
+        }
+
+        // Log for debugging
+        console.error("RAW AI OUTPUT (first 2000 chars):", fullText.substring(0, 2000));
+        console.error("RAW AI OUTPUT (last 500 chars):", fullText.substring(fullText.length - 500));
+
         onThinking(
             createThinkingMessage(
-                `Failed to parse report: ${parseErr instanceof Error ? parseErr.message : "Unknown"}`,
+                `Failed to parse report: ${firstErr instanceof Error ? firstErr.message : "Unknown"}`,
                 "error"
             )
         );
@@ -307,7 +541,7 @@ export async function runAgenticAnalysis(
         return {
             competitor: url,
             niche: niche || "Unknown",
-            company_summary: "Analysis completed but results could not be fully parsed.",
+            company_summary: "Analysis completed but results could not be fully parsed. Please try again.",
             overall_score: 0,
             success_factors: [{ factor: "Analysis incomplete", impact: "low", detail: "Please try again for full results." }],
             top_keywords: [],
